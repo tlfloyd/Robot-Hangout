@@ -8,6 +8,7 @@ In this project, the front-end is coded using an html file calling a javascript 
 More specifically, I created a typescript file that compiles into a javascript file
 The front-end handles drawing sprites to the screen, inputs made by the user, and regularly requesting updates from the back-end
 Each user will only request an update from the back-end once per second, so as to not hammer my laptop)
+
 Realistically, to create a seamless experience with no lag, update requests would be sent much more frequently
 
 -When a player clicks, it will send a request to the back end containing its unique ID and the location it clicked
