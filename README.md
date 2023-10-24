@@ -16,9 +16,13 @@ Realistically, to create a seamless experience with no lag, update requests woul
 The back-end consists of 2 python files, main.py and daemon.py
 The daemon.py is a basic daemon file that was provided for this project, and handles most of the communication between the front and back ends
 The main.py file handles the specifics of the requests and responses between the front and back ends as follows:
+
 -If a request is made from a user clicking on the screen, it records that click, and saves it in a List
+
 -If it is a new user sending a click, it adds that user and their custom ID to a Dict
+
 -If a request is made from a regular update cycle, it responds with all click information that has happened since the user. This information is sent in a List of Tuples
+
 
 To send requests, the front-end will call the httpPost() function, giving it a payload (the information) and a callback function which will use the information that the back end responds with
 Any information sent between the servers is formatted as a JSON object, which particularly helps reduce the load on the back-end
