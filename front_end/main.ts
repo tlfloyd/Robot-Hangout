@@ -10,6 +10,10 @@ const random_id = (len:number) => {
 const g_origin = new URL(window.location.href).origin;
 const g_id = random_id(12);
 
+const sleep = async (ms:number) => {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 class Sprite {
 	x: number;
 	y: number;
@@ -100,14 +104,23 @@ class Sprite {
 
 	sit_still() {
 	}
+
+	tick() {
+		sleep(3000);
+		this.image.src = "explosion.png";
+	}
 }
 
 class Model {
 	robot: Sprite;
+	bombID: number;
 	sprites: Sprite[];
+	bombs: Sprite[];
 
 	constructor() {
+		this.bombID = 0;
 		this.sprites = [];
+		this.bombs = [];
 		this.robot = new Sprite(g_id, 50, 50, "blue_robot.png", Sprite.prototype.go_toward_destination, Sprite.prototype.set_destination);
 		id_to_sprite[g_id] = this.robot;
 		this.sprites.push(this.robot);
@@ -127,6 +140,15 @@ class Model {
 
 	move(dx: number, dy: number) {
 		this.robot.move(dx, dy);
+	}
+
+	placeBomb() {
+		let tempBomb: Sprite = new Sprite(this.bombID, this.robot.x, this.robot.y, "bomb.png", Sprite.prototype.tick, Sprite.prototype.ignore_click);
+		this.bombs.push(tempBomb);
+		this.bombID++;
+		sleep(3300);
+		this.bombs.splice(this.bombID, 1);
+		this.bombID--;
 	}
 }
 
@@ -150,6 +172,9 @@ class View
 		for (const sprite of this.model.sprites) {
 			ctx.drawImage(sprite.image, sprite.x - sprite.image.width / 2, sprite.y - sprite.image.height / 2);
 		}
+		for( const sprite of this.model.bombs) {
+			ctx.drawImage(sprite.image, sprite.x, sprite.y);
+		}
 	}
 }
 
@@ -163,6 +188,7 @@ class Controller
 	key_left: boolean;
 	key_up: boolean;
 	key_down: boolean;
+	key_space: boolean;
 	last_updates_request_time: number;
 	
 	constructor(model: Model, view: View) {
@@ -172,6 +198,7 @@ class Controller
 		this.key_left = false;
 		this.key_up = false;
 		this.key_down = false;
+		this.key_space = false;
 		let self = this;
 		this.last_updates_request_time = Date.now();
 		view.canvas.addEventListener("click", function(event) { self.onClick(event); });
@@ -184,12 +211,29 @@ class Controller
 		const y = event.pageY - this.view.canvas.offsetTop;
 		this.model.onclick(x, y);
 
-		httpPost('ajax.html', {
-			id: g_id,
-			action: 'click',
-			x: x,
-			y: y,
-		}, (ob) => { return this.onAcknowledgeClick(ob)} );
+		// httpPost('ajax.html', {
+		// 	id: g_id,
+		// 	action: 'click',
+		// 	x: x,
+		// 	y: y,
+		// }, this.onAcknowledgeClick);
+
+		fetch('ajax.html', {
+			method: 'POST',
+			body: JSON.stringify({
+				id: g_id,
+				action: 'click',
+				x: x,
+				y: y
+			})
+		}).then(ob => {
+			this.onAcknowledgeClick(ob);
+		}).catch(error => console.log("onClick ERROR"))
+	}
+
+	async onSpace() {
+		this.model.placeBomb();
+		sleep(3000);
 	}
 
 	keyDown(event: KeyboardEvent) {
@@ -197,6 +241,9 @@ class Controller
 		else if(event.keyCode == 37) this.key_left = true;
 		else if(event.keyCode == 38) this.key_up = true;
 		else if(event.keyCode == 40) this.key_down = true;
+		else if (event.keyCode == 32){
+			this.onSpace();
+		}
 	}
 
 	keyUp(event: KeyboardEvent) {
@@ -216,27 +263,23 @@ class Controller
 		if ("updates" in ob){
 			let updates = ob["updates"];
 			let count = Object.keys(updates).length;
-			console.log(count);
 			for (let i = 0; i < count; i++){
-				console.log("TESTING");
 				let update = ob["updates"][i];
 				let id = update[0];
 				let x = update[1];
 				let y = update[2];
 
 				// find the sprite with id == id
-				for (let j = 0; j < this.model.sprites.length; j++){
-					if (id in id_to_sprite){
-						const sprite1 = id_to_sprite[id];
-						sprite1.set_destination(x, y);
-						return;
-					}
-					else{
-						let newPlayer:Sprite = new Sprite(id, x, y, "green_robot.png", Sprite.prototype.go_toward_destination, Sprite.prototype.ignore_click);
-						this.model.sprites.push(newPlayer);
-						id_to_sprite[id] = newPlayer;
-						return;
-					}
+				if (id in id_to_sprite){
+					const sprite1 = id_to_sprite[id];
+					sprite1.set_destination(x, y);
+					return;
+				}
+				else{
+					let newPlayer:Sprite = new Sprite(id, x, y, "green_robot.png", Sprite.prototype.go_toward_destination, Sprite.prototype.ignore_click);
+					this.model.sprites.push(newPlayer);
+					id_to_sprite[id] = newPlayer;
+					return;
 				}
 			}
 		}
@@ -256,13 +299,25 @@ class Controller
 		const time = Date.now();
 		if (time - this.last_updates_request_time >= 1000) {
 			this.last_updates_request_time = time;
-			httpPost('ajax.html', {
-				id: g_id,
-				action: 'getUpdates',
-				x: this.model.robot.x,
-				y: this.model.robot.y
-			}, (ob) => { return this.onReceiveUpdates(ob); });
-			// console.log(this.model.sprites)
+			// httpPost('ajax.html', {
+			// 	id: g_id,
+			// 	action: 'getUpdates',
+			// 	x: this.model.robot.x,
+			// 	y: this.model.robot.y
+			// }, (ob) => { return this.onReceiveUpdates(ob); });
+			
+			fetch('ajax.html', {
+				method: 'POST',
+				body: JSON.stringify({
+					id: g_id,
+					action: 'getUpdates',
+					x: this.model.robot.x,
+					y: this.model.robot.y
+				})
+			}).then(ob => {
+				// resolve.json();
+				this.onReceiveUpdates(ob);
+			}).catch(error => console.log('UPDATE ERROR'));
 		}
 	}
 }
