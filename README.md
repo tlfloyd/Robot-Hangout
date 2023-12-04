@@ -17,6 +17,8 @@ Realistically, to create a seamless experience with no lag, update requests woul
 
 -When the back-end sends information of a new player, the front-end will add that player's information to an array of Sprites to be drawn to the screen
 
+-When a player presses the space bar, a bomb will be placed at the players location, which will explode and then dissapear after 3 seconds
+
 
 The back-end consists of 2 python files, main.py and daemon.py
 The daemon.py is a basic daemon file that was provided for this project, and handles most of the communication between the front and back ends
